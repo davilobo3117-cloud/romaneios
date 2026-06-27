@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RomaneioOCR — VIDRUS BH</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1117; color: #e2e8f0; font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
+
+  header {
+    background: #1a1d27; border-bottom: 1px solid #2e3350;
+    padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .header-title { font-size: 15px; font-weight: 700; }
+  .header-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .badge {
+    margin-left: auto; background: #1e3a5f; color: #93c5fd;
+    font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  main { max-width: 860px; margin: 0 auto; padding: 20px 14px; display: flex; flex-direction: column; gap: 16px; }
+
+  .card { background: #22263a; border: 1px solid #2e3350; border-radius: 12px; overflow: hidden; }
+  .card-header {
+    padding: 13px 18px; border-bottom: 1px solid #2e3350;
+    display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.02);
+  }
+  .card-title { font-size: 13px; font-weight: 600; }
+  .card-body { padding: 18px; }
+
+  .conf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  label { font-size: 11px; color: #64748b; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  input[type=text] {
+    background: #1a1d27; border: 1px solid #2e3350; color: #e2e8f0;
+    padding: 9px 12px; border-radius: 8px; font-size: 13px; width: 100%; outline: none;
+    transition: border 0.15s;
+  }
+  input[type=text]:focus { border-color: #3b82f6; }
+
+  .upload-zone {
+    border: 2px dashed #2e3350; border-radius: 10px; padding: 36px 20px;
+    text-align: center; cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: #3b82f6; background: rgba(59,130,246,0.06); }
+  .upload-icon { font-size: 42px; margin-bottom: 10px; }
+  .upload-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .upload-sub { font-size: 12px; color: #64748b; }
+
+  #preview-img { width: 100%; border-radius: 8px; border: 1px solid #2e3350; max-height: 320px; object-fit: contain; background: #000; display: none; margin-bottom: 12px; }
+
+  .status-box {
+    padding: 11px 16px; border-radius: 8px; font-size: 13px;
+    display: flex; align-items: center; gap: 10px; margin-top: 12px;
+  }
+  .status-loading { background: #1e3a5f; color: #93c5fd; border: 1px solid #1e40af; }
+  .status-success { background: #064e3b; color: #6ee7b7; border: 1px solid #065f46; }
+  .status-warning { background: #451a03; color: #fcd34d; border: 1px solid #78350f; }
+  .status-error   { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(147,197,253,0.3);
+    border-top-color: #93c5fd; border-radius: 50%;
+    animation: spin 1s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat-card { background: #1a1d27; border-radius: 10px; padding: 14px 16px; }
+  .stat-card.blue  { border: 1px solid #1e3a5f; }
+  .stat-card.green { border: 1px solid #064e3b; }
+  .stat-card.purple{ border: 1px solid #2e1065; }
+  .stat-num { font-size: 26px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+  .stat-card.blue   .stat-num  { color: #60a5fa; }
+  .stat-card.green  .stat-num  { color: #34d399; }
+  .stat-card.purple .stat-num  { color: #a78bfa; }
+  .stat-label { font-size: 11px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #2e3350; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    background: #1a1d27; padding: 9px 12px; text-align: left;
+    font-size: 11px; font-weight: 600; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid #2e3350; white-space: nowrap;
+  }
+  td { padding: 7px 10px; border-bottom: 1px solid #2e3350; vertical-align: middle; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+  tr.flag-row td { background: rgba(245,158,11,0.07); }
+
+  .num-input {
+    background: #1a1d27; border: 1px solid #2e3350; color: #e2e8f0;
+    padding: 5px 7px; border-radius: 6px; font-size: 13px; font-family: monospace;
+    width: 76px; outline: none; transition: border 0.15s;
+  }
+  .num-input:focus { border-color: #3b82f6; }
+  .num-input.warn { border-color: #f59e0b; }
+  .num-input.qty { width: 46px; }
+
+  .flag-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .flag-warn { background: #451a03; color: #fcd34d; border: 1px solid #78350f; }
+  .flag-ok   { background: #064e3b; color: #6ee7b7; border: 1px solid #065f46; }
+
+  .row-actions { display: flex; gap: 4px; }
+  .btn-icon {
+    background: transparent; border: 1px solid #2e3350; color: #94a3b8;
+    border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; transition: all 0.15s;
+  }
+  .btn-icon:hover { border-color: #3b82f6; color: #3b82f6; }
+  .btn-icon.danger:hover { border-color: #ef4444; color: #ef4444; }
+
+  .actions-row { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    border: none; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-success { background: #10b981; color: #fff; }
+  .btn-ghost   { background: transparent; border: 1px solid #2e3350; color: #94a3b8; }
+
+  .footer-note {
+    font-size: 11px; color: #64748b; text-align: center;
+    padding: 13px 18px; border-top: 1px solid #2e3350;
+  }
+  .empty-state { text-align: center; padding: 40px 20px; color: #64748b; }
+  .empty-state .ei { font-size: 48px; margin-bottom: 12px; }
+
+  .instructions ol { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .instructions li { font-size: 13px; color: #94a3b8; line-height: 1.6; }
+
+  .warn-banner {
+    padding: 11px 16px; border-radius: 8px; font-size: 13px;
+    display: flex; align-items: flex-start; gap: 10px;
+    background: #451a03; color: #fcd34d; border: 1px solid #78350f; margin-bottom: 4px;
+  }
+
+  @media (max-width: 520px) {
+    .conf-row { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr 1fr; }
+    .stat-num { font-size: 20px; }
+    .actions-row { width: 100%; }
+    .btn { flex: 1; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🔲</div>
+  <div>
+    <div class="header-title">RomaneioOCR</div>
+    <div class="header-sub">VIDRUS BH · Starling SICS 2.6.5</div>
+  </div>
+  <span class="badge">IA Ativa</span>
+</header>
+
+<main>
+
+  <!-- Config -->
+  <div class="card">
+    <div class="card-header"><span>⚙️</span><span class="card-title">Informações do Pedido</span></div>
+    <div class="card-body">
+      <div style="margin-bottom:14px">
+        <label>🔑 Chave de API (Groq) <span style="color:#ef4444">*</span></label>
+        <div style="display:flex;gap:8px">
+          <input type="password" id="api-key" placeholder="sk-ant-..." style="background:#1a1d27;border:1px solid #2e3350;color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;width:100%;outline:none;font-family:monospace">
+          <button class="btn btn-primary" onclick="salvarChave()" style="white-space:nowrap">Salvar</button>
+        </div>
+        <div id="key-status" style="font-size:11px;margin-top:6px;color:#64748b">
+          Cole sua chave do Groq. Gratuita em console.groq.com
+        </div>
+        <div style="font-size:11px;margin-top:4px;color:#64748b">
+          Obtenha sua chave em: <strong style="color:#93c5fd">console.groq.com</strong>
+        </div>
+      </div>
+      <div class="conf-row">
+        <div>
+          <label>Espessura do Vidro</label>
+          <input type="text" id="espessura" placeholder="Ex: 8MM, 10MM" value="8MM">
+        </div>
+        <div>
+          <label>Observações</label>
+          <input type="text" id="obs" placeholder="Opcional">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="card-header"><span>📷</span><span class="card-title">Fotografar Romaneio</span></div>
+    <div class="card-body">
+      <img id="preview-img" alt="romaneio">
+
+      <!-- inputs ocultos -->
+      <input type="file" id="file-camera" accept="image/*" capture="environment" style="display:none">
+      <input type="file" id="file-galeria" accept="image/*" style="display:none">
+
+      <div class="upload-zone" id="upload-zone">
+        <div class="upload-icon">📄</div>
+        <div class="upload-title">Como deseja enviar o romaneio?</div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="document.getElementById('file-camera').click()" style="font-size:13px;padding:10px 22px">📷 Câmera</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('file-galeria').click()" style="font-size:13px;padding:10px 22px">🖼️ Galeria</button>
+        </div>
+        <div class="upload-sub" style="margin-top:14px">JPG, PNG · A IA lê todas as medidas automaticamente</div>
+      </div>
+
+      <div id="status-box" style="display:none"></div>
+
+      <div id="new-photo-btn" style="display:none; margin-top:10px;">
+        <button class="btn btn-ghost" onclick="resetUpload()">📷 Nova foto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats-section" style="display:none">
+    <div class="stats-row">
+      <div class="stat-card blue">
+        <div class="stat-num" id="stat-tipos">0</div>
+        <div class="stat-label">Tipos de Vidro</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-num" id="stat-pecas">0</div>
+        <div class="stat-label">Total de Peças</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-num" id="stat-m2">0</div>
+        <div class="stat-label">M² Total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div id="table-section" style="display:none" class="card">
+    <div class="card-header">
+      <span>📋</span>
+      <span class="card-title">Itens do Romaneio</span>
+      <div class="actions-row">
+        <button class="btn btn-ghost" onclick="addRow()">+ Linha</button>
+        <button class="btn btn-success" onclick="exportCSV()">⬇ Exportar CSV</button>
+      </div>
+    </div>
+    <div id="warn-banner" style="display:none" class="warn-banner">
+      ⚠️ <span id="warn-text"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Largura (mm)</th>
+            <th>Altura (mm)</th>
+            <th>Qtd</th>
+            <th>Área M²</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div class="footer-note" id="footer-note"></div>
+  </div>
+
+  <!-- Instruções -->
+  <div id="instructions-section" style="display:none" class="card instructions">
+    <div class="card-header"><span>🖥️</span><span class="card-title">Como usar no SICS após exportar</span></div>
+    <div class="card-body">
+      <ol>
+        <li>Exporte o CSV clicando em <strong>⬇ Exportar CSV</strong></li>
+        <li>Abra o SICS → <strong>Vendas → Pedido de Venda → Novo Lançamento (9999)</strong></li>
+        <li>Identifique o cliente manualmente no cadastro do SICS</li>
+        <li>Use o CSV aberto ao lado como referência para digitação</li>
+        <li>Salve → <strong>Lista de Vendas</strong> → clique na venda → <strong>Gerar Produção → Imprimir Etiquetas</strong></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div class="empty-state" id="empty-state">
+    <div class="ei">📷</div>
+    <div style="font-size:15px;font-weight:600;color:#94a3b8">Fotografe um romaneio para começar</div>
+    <div style="font-size:12px;margin-top:6px">A IA lê todas as medidas automaticamente</div>
+  </div>
+
+</main>
+
+<script>
+let items = [];
+
+const uploadZone = document.getElementById('upload-zone');
+const previewImg = document.getElementById('preview-img');
+const statusBox = document.getElementById('status-box');
+const tableBody = document.getElementById('table-body');
+
+document.getElementById('file-camera').addEventListener('change', function() {
+  if (this.files[0]) processFile(this.files[0]);
+});
+document.getElementById('file-galeria').addEventListener('change', function() {
+  if (this.files[0]) processFile(this.files[0]);
+});
+
+// Drag
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
+});
+
+function resetUpload() {
+  document.getElementById('file-camera').value = '';
+  document.getElementById('file-galeria').value = '';
+  previewImg.style.display = 'none';
+  previewImg.src = '';
+  uploadZone.style.display = '';
+  document.getElementById('new-photo-btn').style.display = 'none';
+  setStatus(null);
+  items = [];
+  renderTable();
+  document.getElementById('stats-section').style.display = 'none';
+  document.getElementById('table-section').style.display = 'none';
+  document.getElementById('instructions-section').style.display = 'none';
+  document.getElementById('empty-state').style.display = '';
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    previewImg.src = dataUrl;
+    previewImg.style.display = 'block';
+    uploadZone.style.display = 'none';
+    document.getElementById('new-photo-btn').style.display = '';
+    document.getElementById('empty-state').style.display = 'none';
+
+    setStatus('loading', 'Analisando romaneio com IA...');
+
+    const base64 = dataUrl.split(',')[1];
+    const mediaType = file.type || 'image/jpeg';
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: `Você é especialista em leitura de romaneios de vidraçaria manuscritos.
+Analise esta imagem e extraia TODAS as medidas de vidros.
+
+O formato é sempre: LARGURAxALTURA-QUANTIDADE (ex: 2135x627-1)
+- Números são dimensões em milímetros (3 ou 4 dígitos)
+- Quantidade geralmente é 1 ou 2
+- Leia TODAS as linhas das colunas, da esquerda para direita
+- Se um número for ilegível, marque confianca como "baixa"
+- Linhas riscadas devem ser ignoradas
+- Também extraia a espessura se visível
+
+Responda APENAS em JSON válido, sem markdown, sem texto extra:
+{"espessura":"8MM","itens":[{"largura":2135,"altura":627,"qtd":1,"confianca":"alta"},{"largura":490,"altura":2060,"qtd":2,"confianca":"baixa"}]}`
+              }
+            ]
+          }]
+        })
+      });
+
+      const data = await resp.json();
+      const text = (data.content || []).map(c => c.text || '').join('');
+
+      let parsed;
+      try {
+        parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      } catch {
+        setStatus('error', 'Erro ao interpretar resposta da IA. Tente novamente com a foto mais nítida.');
+        return;
+      }
+
+      if (parsed.espessura && !document.getElementById('espessura').value) {
+        document.getElementById('espessura').value = parsed.espessura;
+      }
+
+      items = (parsed.itens || []).map((it, i) => ({
+        id: i,
+        largura: it.largura || 0,
+        altura: it.altura || 0,
+        qtd: it.qtd || 1,
+        flag: it.confianca === 'baixa'
+      }));
+
+      const flagged = items.filter(i => i.flag).length;
+      if (flagged > 0) {
+        setStatus('warning', `${items.length} itens lidos. ${flagged} marcados para revisão (fundo amarelo).`);
+      } else {
+        setStatus('success', `${items.length} itens lidos com sucesso! Revise e exporte.`);
+      }
+
+      renderTable();
+      document.getElementById('stats-section').style.display = '';
+      document.getElementById('table-section').style.display = '';
+      document.getElementById('instructions-section').style.display = '';
+      updateStats();
+
+    } catch (err) {
+      console.error(err);
+      const msg = err && err.message ? err.message : String(err);
+      setStatus('error', 'Erro: ' + msg + ' — Verifique se a chave está correta.');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function setStatus(type, msg) {
+  if (!type) { statusBox.style.display = 'none'; return; }
+  statusBox.style.display = 'flex';
+  statusBox.className = 'status-box status-' + type;
+  statusBox.innerHTML = type === 'loading'
+    ? `<div class="spinner"></div><span>${msg}</span>`
+    : `<span>${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '❌'}</span><span>${msg}</span>`;
+}
+
+function calcArea(it) {
+  return ((it.largura * it.altura) / 1000000 * it.qtd).toFixed(3);
+}
+
+function renderTable() {
+  tableBody.innerHTML = '';
+  const flagged = items.filter(i => i.flag).length;
+  const wb = document.getElementById('warn-banner');
+  if (flagged > 0) {
+    wb.style.display = 'flex';
+    document.getElementById('warn-text').textContent = `${flagged} itens com baixa confiança de leitura — verifique as linhas em amarelo antes de exportar.`;
+  } else {
+    wb.style.display = 'none';
+  }
+
+  items.forEach((it, idx) => {
+    const tr = document.createElement('tr');
+    if (it.flag) tr.classList.add('flag-row');
+    const warnClass = it.flag ? ' warn' : '';
+    tr.innerHTML = `
+      <td style="color:#64748b;font-variant-numeric:tabular-nums">${idx + 1}</td>
+      <td><input class="num-input${warnClass}" value="${it.largura}" onchange="updateItem(${it.id},'largura',this.value)" oninput="updateItem(${it.id},'largura',this.value)"></td>
+      <td><input class="num-input${warnClass}" value="${it.altura}" onchange="updateItem(${it.id},'altura',this.value)" oninput="updateItem(${it.id},'altura',this.value)"></td>
+      <td><input class="num-input qty" value="${it.qtd}" onchange="updateItem(${it.id},'qtd',this.value)" oninput="updateItem(${it.id},'qtd',this.value)"></td>
+      <td style="color:#94a3b8;font-family:monospace;font-size:12px">${calcArea(it)} m²</td>
+      <td>${it.flag
+        ? `<span class="flag-badge flag-warn">Revisar</span>`
+        : `<span class="flag-badge flag-ok">✓ OK</span>`}
+      </td>
+      <td>
+        <div class="row-actions">
+          ${it.flag ? `<button class="btn-icon" onclick="clearFlag(${it.id})" title="Marcar como OK">✓</button>` : ''}
+          <button class="btn-icon danger" onclick="removeItem(${it.id})" title="Remover">✕</button>
+        </div>
+      </td>`;
+    tableBody.appendChild(tr);
+  });
+
+  const esp = document.getElementById('espessura').value;
+  document.getElementById('footer-note').textContent =
+    `Espessura: ${esp || '—'} · ${new Date().toLocaleDateString('pt-BR')} · Total: ${items.length} tipos`;
+}
+
+function updateItem(id, field, value) {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  it[field] = field === 'flag' ? value : (parseInt(value) || 0);
+  updateStats();
+  document.getElementById('footer-note').textContent =
+    `Espessura: ${document.getElementById('espessura').value || '—'} · ${new Date().toLocaleDateString('pt-BR')} · Total: ${items.length} tipos`;
+}
+
+function clearFlag(id) {
+  const it = items.find(i => i.id === id);
+  if (it) { it.flag = false; renderTable(); updateStats(); }
+}
+
+function removeItem(id) {
+  items = items.filter(i => i.id !== id);
+  renderTable(); updateStats();
+}
+
+function addRow() {
+  const newId = Date.now();
+  items.push({ id: newId, largura: 0, altura: 0, qtd: 1, flag: false });
+  renderTable(); updateStats();
+}
+
+function updateStats() {
+  document.getElementById('stat-tipos').textContent = items.length;
+  document.getElementById('stat-pecas').textContent = items.reduce((a, i) => a + (parseInt(i.qtd) || 0), 0);
+  document.getElementById('stat-m2').textContent = items.reduce((a, i) => a + parseFloat(calcArea(i)), 0).toFixed(2);
+}
+
+function exportCSV() {
+  if (items.length === 0) return alert('Nenhum item para exportar.');
+  const esp = document.getElementById('espessura').value;
+  const obs = document.getElementById('obs').value;
+  let csv = '\uFEFFItem;Largura (mm);Altura (mm);Quantidade;Area M2;Espessura;Obs\n';
+  items.forEach((it, i) => {
+    csv += `${i+1};${it.largura};${it.altura};${it.qtd};${calcArea(it)};${esp};${obs}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `romaneio_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function salvarChave() {
+  const key = document.getElementById('api-key').value.trim();
+  if (key.length < 10) {
+    document.getElementById('key-status').innerHTML = '<span style="color:#fca5a5">❌ Chave muito curta. Verifique e tente novamente.</span>';
+    return;
+  }
+  localStorage.setItem('groq_key', key);
+  document.getElementById('key-status').innerHTML = '<span style="color:#6ee7b7">✅ Chave salva com sucesso!</span>';
+  document.getElementById('api-key').value = '••••••••••••••••••••';
+}
+
+// Carregar chave salva ao abrir
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('groq_key');
+  if (saved) {
+    document.getElementById('api-key').value = '••••••••••••••••••••';
+    document.getElementById('key-status').innerHTML = '<span style="color:#6ee7b7">✅ Chave já configurada.</span>';
+  }
+});
+</script>
+</body>
+</html>
